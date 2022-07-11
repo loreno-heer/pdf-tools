@@ -1437,6 +1437,13 @@ annotation_new (const epdfinfo_t *ctx, document_t *doc, PopplerPage *page,
       cerror_if_not (nargs == 0, error_msg, "%s", "Too many arguments");
       return poppler_annot_text_new (doc->pdf, r);
     }
+  else if (! strcmp (type, "free-text"))
+    {
+      Annot *annot;
+      annot = new AnnotFreeText(doc->pdf, r);
+
+      return _poppler_create_annot(POPPLER_TYPE_ANNOT_FREE_TEXT, annot);
+    }
 
 #ifdef HAVE_POPPLER_ANNOT_MARKUP
   garray = g_array_new (FALSE, FALSE, sizeof (PopplerQuadrilateral));

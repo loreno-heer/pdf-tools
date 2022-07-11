@@ -298,6 +298,7 @@ Setting this after the package was loaded has no effect."
     (when (pdf-info-writable-annotations-p)
       (define-key smap "D" #'pdf-annot-delete)
       (define-key smap "t" #'pdf-annot-add-text-annotation)
+      (define-key smap "T" #'pdf-annot-add-freetext-annotation)
       (when (pdf-info-markup-annotations-p)
         (define-key smap "m" #'pdf-annot-add-markup-annotation)
         (define-key smap "s" #'pdf-annot-add-squiggly-markup-annotation)
@@ -1135,6 +1136,64 @@ Return the new annotation."
         (cdr (assq 'text pdf-annot-default-annotation-properties))
         (cdr (assq t pdf-annot-default-annotation-properties))
         `((color . ,(car pdf-annot-color-history))))))))
+
+
+(defun pdf-annot-add-freetext-annotation (pos &optional icon property-alist)
+  "Add a new text annotation at POS in the selected window.
+
+POS should be a image position object or a cons \(X . Y\), both
+being image coordinates.
+
+ICON determines how the annotation is displayed and should be
+listed in `pdf-annot-standard-text-icons'.  Any other value is ok
+as well, but will render the annotation invisible.
+
+Adjust X and Y accordingly, if the position would render the
+annotation off-page.
+
+Merge ICON as a icon property with PROPERTY-ALIST and
+`pdf-annot-default-text-annotation-properties' and apply the
+result to the created annotation.
+
+See also `pdf-annot-add-annotation'.
+
+Return the new annotation."
+
+  (interactive
+   (let* ((posn (pdf-util-read-image-position
+                 "Click where a new text annotation should be added ..."))
+          (window (posn-window posn)))
+     (select-window window)
+     (list posn)))
+  (pdf-util-assert-pdf-window)
+  (when (posnp pos)
+    (setq pos (posn-object-x-y pos)))
+  (let ((isize (pdf-view-image-size))
+        (x (car pos))
+        (y (cdr pos)))
+    (unless (and (>= x 0)
+                 (< x (car isize)))
+      (signal 'args-out-of-range (list pos)))
+    (unless (and (>= y 0)
+                 (< y (cdr isize)))
+      (signal 'args-out-of-range (list pos)))
+    (let ((size (pdf-util-scale-points-to-pixel
+                 pdf-annot-text-annotation-size 'round)))
+      (setcar size (min (car size) (car isize)))
+      (setcdr size (min (cdr size) (cdr isize)))
+      (cl-decf x (max 0 (- (+ x (car size)) (car isize))))
+      (cl-decf y (max 0 (- (+ y (cdr size)) (cdr isize))))
+      (pdf-annot-add-annotation
+       'free-text (pdf-util-scale-pixel-to-relative
+              (list x y -1 -1))
+       (pdf-annot-merge-alists
+        (and icon `((icon . ,icon)))
+        property-alist
+        pdf-annot-default-text-annotation-properties
+        (cdr (assq 'text pdf-annot-default-annotation-properties))
+        (cdr (assq t pdf-annot-default-annotation-properties))
+        `((color . ,(car pdf-annot-color-history))))))))
+
 
 (defun pdf-annot-mouse-add-text-annotation (ev)
   "Add a text annotation using the mouse.
